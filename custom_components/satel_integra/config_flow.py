@@ -25,6 +25,7 @@ from homeassistant.helpers import config_validation as cv, selector
 from .const import (
     CONF_ARM_HOME_MODE,
     CONF_DEVICE_PARTITIONS,
+    CONF_INTEGRATION_KEY,
     CONF_OUTPUT_NUMBER,
     CONF_OUTPUTS,
     CONF_PARTITION_NUMBER,
@@ -50,12 +51,14 @@ CONNECTION_SCHEMA = vol.Schema(
         vol.Required(CONF_HOST): str,
         vol.Required(CONF_PORT, default=DEFAULT_PORT): cv.port,
         vol.Optional(CONF_CODE): cv.string,
+        vol.Optional(CONF_INTEGRATION_KEY): cv.string,
     }
 )
 
 CODE_SCHEMA = vol.Schema(
     {
         vol.Optional(CONF_CODE): cv.string,
+        vol.Optional(CONF_INTEGRATION_KEY): cv.string,
     }
 )
 
@@ -134,7 +137,10 @@ class SatelConfigFlow(ConfigFlow, domain=DOMAIN):
                         CONF_HOST: user_input[CONF_HOST],
                         CONF_PORT: user_input[CONF_PORT],
                     },
-                    options={CONF_CODE: user_input.get(CONF_CODE)},
+                    options={
+                        CONF_CODE: user_input.get(CONF_CODE),
+                        CONF_INTEGRATION_KEY: user_input.get(CONF_INTEGRATION_KEY),
+                    },
                 )
 
             errors["base"] = "cannot_connect"
@@ -228,7 +234,10 @@ class SatelConfigFlow(ConfigFlow, domain=DOMAIN):
                     CONF_HOST: import_config[CONF_HOST],
                     CONF_PORT: import_config.get(CONF_PORT, DEFAULT_PORT),
                 },
-                options={CONF_CODE: import_config.get(CONF_CODE)},
+                options={
+                    CONF_CODE: import_config.get(CONF_CODE),
+                    CONF_INTEGRATION_KEY: import_config.get(CONF_INTEGRATION_KEY),
+                },
                 subentries=subentries,
             )
 
@@ -254,7 +263,12 @@ class SatelOptionsFlow(OptionsFlowWithReload):
     ) -> ConfigFlowResult:
         """Init step."""
         if user_input is not None:
-            return self.async_create_entry(data={CONF_CODE: user_input.get(CONF_CODE)})
+            return self.async_create_entry(
+                data={
+                    CONF_CODE: user_input.get(CONF_CODE),
+                    CONF_INTEGRATION_KEY: user_input.get(CONF_INTEGRATION_KEY),
+                }
+            )
 
         return self.async_show_form(
             step_id="init",

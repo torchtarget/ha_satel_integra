@@ -22,6 +22,7 @@ CONF_SWITCHABLE_OUTPUT_NUMBER = "switchable_output_number"
 
 CONF_DEVICE_PARTITIONS = "partitions"
 CONF_ARM_HOME_MODE = "arm_home_mode"
+CONF_INTEGRATION_KEY = "integration_key"
 CONF_ZONE_TYPE = "type"
 CONF_ZONES = "zones"
 CONF_OUTPUTS = "outputs"

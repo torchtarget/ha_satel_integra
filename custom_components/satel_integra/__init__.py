@@ -25,6 +25,7 @@ from homeassistant.helpers.typing import ConfigType
 from .const import (
     CONF_ARM_HOME_MODE,
     CONF_DEVICE_PARTITIONS,
+    CONF_INTEGRATION_KEY,
     CONF_OUTPUT_NUMBER,
     CONF_OUTPUTS,
     CONF_PARTITION_NUMBER,
@@ -185,12 +186,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: SatelConfigEntry) -> boo
 
     monitored_outputs = outputs + switchable_outputs
 
+    # Get integration_key from options (optional)
+    integration_key = entry.options.get(CONF_INTEGRATION_KEY)
+
     controller = AsyncSatel(
         host,
         port,
         monitored_zones=zones,
         monitored_outputs=monitored_outputs,
         partitions=partitions,
+        integration_key=integration_key,
     )
 
     entry.runtime_data = controller
