@@ -57,12 +57,13 @@ class SatelIntegraEntity(Entity):
         self._attr_unique_id = f"{config_entry_id}_{entity_type}_{device_number}"
 
         # Build device info with optional area assignment
-        device_info = DeviceInfo(
-            name=subentry.data[CONF_NAME], identifiers={(DOMAIN, self._attr_unique_id)}
-        )
+        device_info_params: dict = {
+            "name": subentry.data[CONF_NAME],
+            "identifiers": {(DOMAIN, self._attr_unique_id)},
+        }
 
-        # If area is specified in config, get or create it and assign to device
+        # If area is specified in config, add suggested_area parameter
         if area_name := subentry.data.get(CONF_AREA):
-            device_info["suggested_area"] = area_name
+            device_info_params["suggested_area"] = area_name
 
-        self._attr_device_info = device_info
+        self._attr_device_info = DeviceInfo(**device_info_params)
