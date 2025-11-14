@@ -31,7 +31,6 @@ CONF_SWITCHABLE_OUTPUTS = "switchable_outputs"
 
 ZONES = "zones"
 
-
 SIGNAL_PANEL_MESSAGE = "satel_integra.panel_message"
 
 SIGNAL_ZONES_UPDATED = "satel_integra.zones_updated"
