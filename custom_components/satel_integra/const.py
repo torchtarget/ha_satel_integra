@@ -1,6 +1,6 @@
 """Constants for the Satel Integra integration."""
 
-from satel_integra.satel_integra import AsyncSatel
+from satel_integra import AsyncSatel
 
 from homeassistant.config_entries import ConfigEntry
 

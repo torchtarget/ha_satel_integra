@@ -8,12 +8,14 @@ This is an enhanced version of the Satel Integra integration, based on the offic
 
 ## Current Status
 
-**Initial Release** - This is a direct copy of the official Home Assistant component without modifications.
+**Updated to use latest satel_integra library** - Migrated to use the latest unreleased version of the satel_integra library from GitHub.
 
 - Based on official HA core satel_integra component
-- Uses `satel-integra==0.3.7` library (no encryption yet)
+- Uses latest `satel_integra` library from GitHub (unreleased, post-0.3.7)
+- Updated to new library API with improved lifecycle management
 - Includes config flow for UI-based setup
 - Supports partitions, zones, outputs, and switchable outputs
+- Ready for encryption support once library feature is added
 
 ## Planned Features
 

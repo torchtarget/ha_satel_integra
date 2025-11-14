@@ -2,7 +2,7 @@
 
 import logging
 
-from satel_integra.satel_integra import AsyncSatel
+from satel_integra import AsyncSatel
 import voluptuous as vol
 
 from homeassistant.config_entries import SOURCE_IMPORT
@@ -185,18 +185,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: SatelConfigEntry) -> boo
 
     monitored_outputs = outputs + switchable_outputs
 
-    controller = AsyncSatel(host, port, hass.loop, zones, monitored_outputs, partitions)
-
-    result = await controller.connect()
-
-    if not result:
-        raise ConfigEntryNotReady("Controller failed to connect")
+    controller = AsyncSatel(
+        host,
+        port,
+        monitored_zones=zones,
+        monitored_outputs=monitored_outputs,
+        partitions=partitions,
+    )
 
     entry.runtime_data = controller
 
-    @callback
-    def _close(*_):
-        controller.close()
+    async def _close(*_):
+        await controller.close()
 
     entry.async_on_unload(entry.add_update_listener(update_listener))
     entry.async_on_unload(hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, _close))
@@ -213,22 +213,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: SatelConfigEntry) -> boo
     def zones_update_callback(status):
         """Update zone objects as per notification from the alarm."""
         _LOGGER.debug("Zones callback, status: %s", status)
-        async_dispatcher_send(hass, SIGNAL_ZONES_UPDATED, status[ZONES])
+        async_dispatcher_send(hass, SIGNAL_ZONES_UPDATED, status)
 
     @callback
     def outputs_update_callback(status):
         """Update zone objects as per notification from the alarm."""
         _LOGGER.debug("Outputs updated callback , status: %s", status)
-        async_dispatcher_send(hass, SIGNAL_OUTPUTS_UPDATED, status["outputs"])
+        async_dispatcher_send(hass, SIGNAL_OUTPUTS_UPDATED, status)
 
-    # Create a task instead of adding a tracking job, since this task will
-    # run until the connection to satel_integra is closed.
-    hass.loop.create_task(controller.keep_alive())
-    hass.loop.create_task(
-        controller.monitor_status(
-            alarm_status_update_callback, zones_update_callback, outputs_update_callback
-        )
+    controller.register_callbacks(
+        alarm_status_callback=alarm_status_update_callback,
+        zone_changed_callback=zones_update_callback,
+        output_changed_callback=outputs_update_callback,
     )
+
+    await controller.start(enable_monitoring=True)
 
     return True
 
@@ -238,7 +237,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: SatelConfigEntry) -> bo
 
     if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
         controller = entry.runtime_data
-        controller.close()
+        await controller.close()
 
     return unload_ok
 
