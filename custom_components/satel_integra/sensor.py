@@ -52,48 +52,55 @@ async def async_setup_entry(
     if not zone_subentries:
         return
 
-    async def test_zone_temperature(subentry: ConfigSubentry) -> ConfigSubentry | None:
+    async def test_zone_temperature(subentry: ConfigSubentry, delay: float = 0) -> ConfigSubentry | None:
         """Test if a zone supports temperature and return subentry if it does."""
         zone_num: int = subentry.data[CONF_ZONE_NUMBER]
 
-        _LOGGER.debug("Testing zone %s for temperature capability", zone_num)
+        # Add small delay to avoid overwhelming controller
+        if delay > 0:
+            await asyncio.sleep(delay)
+
+        _LOGGER.debug("Testing zone %s ('%s') for temperature capability", zone_num, subentry.data[CONF_NAME])
 
         try:
-            # Try to read temperature with a 2-second timeout for detection
+            # Try to read temperature with 6-second timeout (protocol spec: up to 5 seconds + margin)
             temperature = await asyncio.wait_for(
                 controller.get_zone_temperature(zone_num),
-                timeout=2.0
+                timeout=6.0
             )
 
             if temperature is not None:
                 _LOGGER.info(
-                    "Zone %s ('%s') supports temperature - creating sensor",
+                    "✅ Zone %s ('%s') supports temperature: %.1f°C - creating sensor",
                     zone_num,
                     subentry.data[CONF_NAME],
+                    temperature,
                 )
                 return subentry
             else:
-                _LOGGER.debug("Zone %s does not support temperature", zone_num)
+                _LOGGER.debug("Zone %s ('%s') returned None (no temperature sensor)", zone_num, subentry.data[CONF_NAME])
                 return None
 
         except asyncio.TimeoutError:
             _LOGGER.debug(
-                "Zone %s does not support temperature (timeout)",
+                "Zone %s ('%s') timeout after 6s (no temperature sensor)",
                 zone_num,
+                subentry.data[CONF_NAME],
             )
             return None
         except Exception as ex:
-            _LOGGER.debug(
-                "Zone %s temperature check failed: %s",
+            _LOGGER.warning(
+                "Zone %s ('%s') temperature check error: %s",
                 zone_num,
+                subentry.data[CONF_NAME],
                 ex,
             )
             return None
 
-    # Test all zones in parallel to avoid sequential delay
-    _LOGGER.info("Testing %d zones for temperature capability in parallel", len(zone_subentries))
+    # Test all zones in parallel with small stagger to avoid overwhelming controller
+    _LOGGER.info("Testing %d zones for temperature capability (6s timeout per zone)", len(zone_subentries))
     results = await asyncio.gather(
-        *[test_zone_temperature(subentry) for subentry in zone_subentries],
+        *[test_zone_temperature(subentry, delay=i * 0.05) for i, subentry in enumerate(zone_subentries)],
         return_exceptions=True
     )
 
