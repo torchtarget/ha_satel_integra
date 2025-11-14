@@ -107,6 +107,9 @@ class SatelIntegraBinarySensor(SatelIntegraEntity, BinarySensorEntity):
 
     async def async_added_to_hass(self) -> None:
         """Register callbacks."""
+        # Call parent to handle area assignment
+        await super().async_added_to_hass()
+
         if self._react_to_signal == SIGNAL_OUTPUTS_UPDATED:
             self._attr_is_on = self._device_number in self._satel.violated_outputs
         else:
