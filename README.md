@@ -8,18 +8,22 @@ This is an enhanced version of the Satel Integra integration, based on the offic
 
 ## Current Status
 
-**v0.3.0 - Encryption Support Added!** - Now supports encrypted communication with Satel Integra alarm panels.
+**v0.4.0 - Area Assignment Feature!** - Now supports automatic area assignment for devices.
 
 - Based on official HA core satel_integra component
 - Uses latest `satel_integra` library from GitHub (unreleased, post-0.3.7)
 - Updated to new library API with improved lifecycle management
 - **✅ Encryption support via integration_key parameter**
+- **✅ Automatic area assignment for zones and outputs**
 - Includes config flow for UI-based setup
+- Supports YAML configuration for easy bulk setup
 - Supports partitions, zones, outputs, and switchable outputs
 
 ## Features
 
 - **Encrypted Communication**: Supports integration key for secure communication with your alarm panel
+- **Automatic Area Assignment**: Assign devices to Home Assistant areas directly from configuration
+- **YAML Configuration**: Configure all zones, partitions, and outputs via YAML for easy bulk setup
 - **Alarm Control Panel**: Arm/disarm partitions with different modes (Away, Home)
 - **Binary Sensors**: Monitor zone states (doors, windows, motion detectors, etc.)
 - **Switches**: Control switchable outputs (gates, lights, etc.)
@@ -57,6 +61,63 @@ This is an enhanced version of the Satel Integra integration, based on the offic
 
 ## Configuration
 
+This integration supports two configuration methods:
+
+### Method 1: YAML Configuration (Recommended for Bulk Setup)
+
+Configure the integration via `configuration.yaml` for easy management of many zones:
+
+```yaml
+satel_integra:
+  host: 192.168.1.100  # IP address of your ETHM-1 Plus module
+  port: 7094  # Optional, defaults to 7094
+  integration_key: !secret satel_integration_key  # Optional, for encryption
+
+  # Configure partitions
+  partitions:
+    "01":
+      name: "Perimeter"
+      arm_home_mode: 1  # Optional: 1, 2, or 3
+    "02":
+      name: "Inside"
+      arm_home_mode: 1
+
+  # Configure zones with optional area assignment
+  zones:
+    1: { name: "Front Door", type: door, area: "entry" }
+    2: { name: "Kitchen Motion", type: motion, area: "kitchen" }
+    3: { name: "Living Room Window", type: window, area: "living_room" }
+    4: { name: "Basement Smoke Detector", type: smoke, area: "basement" }
+    # ... add all your zones
+
+  # Configure outputs (read-only monitoring)
+  outputs:
+    1: { name: "Siren Status", type: motion, area: "entry" }
+
+  # Configure switchable outputs (controllable switches)
+  switchable_outputs:
+    5: { name: "Garage Door", area: "garage" }
+    6: { name: "Gate Control", area: "entry" }
+```
+
+**Area Assignment Features:**
+- **Optional**: The `area` parameter is completely optional
+- **Auto-create**: If an area doesn't exist, Home Assistant will automatically create it
+- **Simple names**: Use plain text names like "kitchen", "living_room", "basement"
+- **All device types**: Works for zones, outputs, and switchable outputs
+
+**Available Zone Types:**
+- `motion` - Motion detectors (default)
+- `door` - Door contacts
+- `window` - Window contacts
+- `smoke` - Smoke detectors
+- `tamper` - Tamper sensors
+- `panic` - Panic buttons
+
+After adding the configuration, restart Home Assistant to load the changes.
+
+### Method 2: UI Configuration
+
 1. Go to **Settings → Devices & Services → Add Integration**
 2. Search for **"Satel Integra"**
 3. Enter the following information:
@@ -66,6 +127,8 @@ This is an enhanced version of the Satel Integra integration, based on the offic
    - **Integration Key** (optional): Encryption key for secure communication
 4. Click **Submit**
 5. Add partitions, zones, outputs, and switchable outputs as needed
+
+**Note**: UI configuration does not support area assignment. Use YAML configuration for automatic area assignment.
 
 ### Finding Your Integration Key
 

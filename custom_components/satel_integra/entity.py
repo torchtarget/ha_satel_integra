@@ -8,10 +8,13 @@ from satel_integra import AsyncSatel
 
 from homeassistant.config_entries import ConfigSubentry
 from homeassistant.const import CONF_NAME
+from homeassistant.core import callback
+from homeassistant.helpers import area_registry as ar
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import Entity
 
 from .const import (
+    CONF_AREA,
     DOMAIN,
     SUBENTRY_TYPE_OUTPUT,
     SUBENTRY_TYPE_PARTITION,
@@ -53,6 +56,13 @@ class SatelIntegraEntity(Entity):
 
         self._attr_unique_id = f"{config_entry_id}_{entity_type}_{device_number}"
 
-        self._attr_device_info = DeviceInfo(
+        # Build device info with optional area assignment
+        device_info = DeviceInfo(
             name=subentry.data[CONF_NAME], identifiers={(DOMAIN, self._attr_unique_id)}
         )
+
+        # If area is specified in config, get or create it and assign to device
+        if area_name := subentry.data.get(CONF_AREA):
+            device_info["suggested_area"] = area_name
+
+        self._attr_device_info = device_info

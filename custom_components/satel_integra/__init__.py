@@ -23,6 +23,7 @@ from homeassistant.helpers.entity_registry import RegistryEntry, async_migrate_e
 from homeassistant.helpers.typing import ConfigType
 
 from .const import (
+    CONF_AREA,
     CONF_ARM_HOME_MODE,
     CONF_DEVICE_PARTITIONS,
     CONF_INTEGRATION_KEY,
@@ -58,9 +59,15 @@ ZONE_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_NAME): cv.string,
         vol.Optional(CONF_ZONE_TYPE, default=DEFAULT_ZONE_TYPE): cv.string,
+        vol.Optional(CONF_AREA): cv.string,
     }
 )
-EDITABLE_OUTPUT_SCHEMA = vol.Schema({vol.Required(CONF_NAME): cv.string})
+EDITABLE_OUTPUT_SCHEMA = vol.Schema(
+    {
+        vol.Required(CONF_NAME): cv.string,
+        vol.Optional(CONF_AREA): cv.string,
+    }
+)
 PARTITION_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_NAME): cv.string,
