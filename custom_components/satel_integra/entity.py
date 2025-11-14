@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from satel_integra import AsyncSatel
+from satel_integra_enh import AsyncSatel
 
 from homeassistant.config_entries import ConfigSubentry
 from homeassistant.const import CONF_NAME

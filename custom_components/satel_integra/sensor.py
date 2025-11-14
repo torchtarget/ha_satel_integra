@@ -6,7 +6,7 @@ import asyncio
 import logging
 from datetime import timedelta
 
-from satel_integra import AsyncSatel
+from satel_integra_enh import AsyncSatel
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,

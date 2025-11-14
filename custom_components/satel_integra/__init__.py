@@ -2,7 +2,7 @@
 
 import logging
 
-from satel_integra import AsyncSatel
+from satel_integra_enh import AsyncSatel
 import voluptuous as vol
 
 from homeassistant.config_entries import SOURCE_IMPORT

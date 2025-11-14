@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from satel_integra import AsyncSatel
+from satel_integra_enh import AsyncSatel
 
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigSubentry

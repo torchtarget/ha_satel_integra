@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from satel_integra import AsyncSatel
+from satel_integra_enh import AsyncSatel
 
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
