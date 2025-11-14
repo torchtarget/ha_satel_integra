@@ -60,20 +60,12 @@ class SatelIntegraEntity(Entity):
 
         self._attr_unique_id = f"{config_entry_id}_{entity_type}_{device_number}"
 
-        # Build device info WITHOUT suggested_area
-        # Area assignment is handled in async_added_to_hass to prevent auto-creation
-        device_info_params: dict = {
-            "name": subentry.data[CONF_NAME],
-            "identifiers": {(DOMAIN, self._attr_unique_id)},
-        }
-
-        _LOGGER.debug(
-            "SATEL DEVICE INIT: Creating device '%s' (zone %s) - area assignment will be handled later",
-            subentry.data[CONF_NAME],
-            device_number,
+        # Build device info without suggested_area to prevent auto-creation of areas
+        # Area assignment is handled in async_added_to_hass where we validate the area exists
+        self._attr_device_info = DeviceInfo(
+            name=subentry.data[CONF_NAME],
+            identifiers={(DOMAIN, self._attr_unique_id)},
         )
-
-        self._attr_device_info = DeviceInfo(**device_info_params)
 
     async def async_added_to_hass(self) -> None:
         """Handle entity added to Home Assistant - assign device to area."""
@@ -82,69 +74,29 @@ class SatelIntegraEntity(Entity):
         # Check if area is specified in config
         area_name = self._subentry.data.get(CONF_AREA)
         if not area_name:
-            _LOGGER.debug(
-                "No area specified for device '%s' (zone %s)",
-                self._subentry.data[CONF_NAME],
-                self._device_number,
-            )
             return
 
-        _LOGGER.info(
-            "🔵 SATEL AREA ASSIGNMENT: Processing device '%s' (zone %s) -> area '%s'",
-            self._subentry.data[CONF_NAME],
-            self._device_number,
-            area_name,
-        )
-
-        # Get the area registry and find/create the area
+        # Get the area registry and lookup the area
         area_reg = ar.async_get(self.hass)
-
-        # DEBUG: List all existing areas
-        all_areas = area_reg.async_list_areas()
-        _LOGGER.info(
-            "🔍 SATEL AREA DEBUG: Existing areas: %s",
-            [(a.id, a.name) for a in all_areas],
-        )
 
         # Try to find area by ID first (e.g., "technical_room")
         area_entry = area_reg.async_get_area(area_name)
-        _LOGGER.info(
-            "🔍 SATEL AREA DEBUG: Lookup by ID '%s' result: %s",
-            area_name,
-            area_entry.name if area_entry else "NOT FOUND",
-        )
 
-        if area_entry:
-            _LOGGER.info(
-                "🟢 SATEL AREA: Found existing area by ID '%s' (name: '%s')",
-                area_name,
-                area_entry.name,
-            )
-        else:
-            # Try to find by name (e.g., "Technical Room")
+        if not area_entry:
+            # Try to find by name if ID lookup failed (e.g., "Technical Room")
             area_entry = area_reg.async_get_area_by_name(area_name)
-            _LOGGER.info(
-                "🔍 SATEL AREA DEBUG: Lookup by NAME '%s' result: %s",
+
+        if not area_entry:
+            # Area not found - skip assignment and warn user
+            _LOGGER.warning(
+                "Area '%s' not found for device '%s'. Device will not be assigned to an area. "
+                "Check that the area exists in Home Assistant and matches the value in satel.yaml",
                 area_name,
-                area_entry.id if area_entry else "NOT FOUND",
+                self._subentry.data[CONF_NAME],
             )
+            return
 
-            if area_entry:
-                _LOGGER.info(
-                    "🟢 SATEL AREA: Found existing area by NAME '%s' (ID: %s)",
-                    area_name,
-                    area_entry.id,
-                )
-            else:
-                # Area not found - skip assignment
-                _LOGGER.warning(
-                    "⚠️ SATEL AREA: Area '%s' not found (searched by ID and NAME). Device '%s' will not be assigned to an area. Please check your satel.yaml area names match existing area IDs or names in Home Assistant.",
-                    area_name,
-                    self._subentry.data[CONF_NAME],
-                )
-                return
-
-        # Get the device registry and find our device
+        # Get the device from registry
         device_reg = dr.async_get(self.hass)
         device_entry = device_reg.async_get_device(
             identifiers={(DOMAIN, self._attr_unique_id)}
@@ -152,25 +104,17 @@ class SatelIntegraEntity(Entity):
 
         if not device_entry:
             _LOGGER.error(
-                "🔴 SATEL AREA ERROR: Device not found in registry for '%s' (unique_id: %s)",
+                "Device not found in registry for '%s' (unique_id: %s)",
                 self._subentry.data[CONF_NAME],
                 self._attr_unique_id,
             )
             return
 
-        _LOGGER.info(
-            "🟡 SATEL AREA: Found device '%s' (device_id: %s, current_area: %s)",
-            device_entry.name,
-            device_entry.id,
-            device_entry.area_id,
-        )
-
-        # Update the device's area
+        # Assign device to area
         device_reg.async_update_device(device_entry.id, area_id=area_entry.id)
 
-        _LOGGER.info(
-            "✅ SATEL AREA SUCCESS: Device '%s' assigned to area '%s' (area_id: %s)",
+        _LOGGER.debug(
+            "Assigned device '%s' to area '%s'",
             self._subentry.data[CONF_NAME],
-            area_name,
-            area_entry.id,
+            area_entry.name,
         )
