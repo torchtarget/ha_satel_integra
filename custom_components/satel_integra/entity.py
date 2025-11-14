@@ -150,13 +150,13 @@ class SatelIntegraEntity(Entity):
                     area_entry.id,
                 )
             else:
-                # Create new area if it doesn't exist
-                area_entry = area_reg.async_create(area_name)
-                _LOGGER.info(
-                    "🆕 SATEL AREA: Created new area '%s' (ID: %s)",
+                # Area not found - skip assignment
+                _LOGGER.warning(
+                    "⚠️ SATEL AREA: Area '%s' not found (searched by ID and NAME). Device '%s' will not be assigned to an area. Please check your satel.yaml area names match existing area IDs or names in Home Assistant.",
                     area_name,
-                    area_entry.id,
+                    self._subentry.data[CONF_NAME],
                 )
+                return
 
         # Get the device registry and find our device
         device_reg = dr.async_get(self.hass)
