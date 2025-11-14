@@ -60,31 +60,17 @@ class SatelIntegraEntity(Entity):
 
         self._attr_unique_id = f"{config_entry_id}_{entity_type}_{device_number}"
 
-        # Build device info with optional area assignment
+        # Build device info WITHOUT suggested_area
+        # Area assignment is handled in async_added_to_hass to prevent auto-creation
         device_info_params: dict = {
             "name": subentry.data[CONF_NAME],
             "identifiers": {(DOMAIN, self._attr_unique_id)},
         }
 
-        # If area is specified in config, add suggested_area parameter
-        if area_name := subentry.data.get(CONF_AREA):
-            device_info_params["suggested_area"] = area_name
-            _LOGGER.info(
-                "🔵 SATEL DEVICE INIT: Creating device '%s' (zone %s) with suggested_area='%s'",
-                subentry.data[CONF_NAME],
-                device_number,
-                area_name,
-            )
-        else:
-            _LOGGER.debug(
-                "SATEL DEVICE INIT: Creating device '%s' (zone %s) WITHOUT area",
-                subentry.data[CONF_NAME],
-                device_number,
-            )
-
-        _LOGGER.info(
-            "🟡 SATEL DEVICE INFO: device_info_params = %s",
-            device_info_params,
+        _LOGGER.debug(
+            "SATEL DEVICE INIT: Creating device '%s' (zone %s) - area assignment will be handled later",
+            subentry.data[CONF_NAME],
+            device_number,
         )
 
         self._attr_device_info = DeviceInfo(**device_info_params)
