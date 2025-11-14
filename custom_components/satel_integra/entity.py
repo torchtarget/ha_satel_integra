@@ -20,6 +20,7 @@ from .const import (
     SUBENTRY_TYPE_OUTPUT,
     SUBENTRY_TYPE_PARTITION,
     SUBENTRY_TYPE_SWITCHABLE_OUTPUT,
+    SUBENTRY_TYPE_TEMPERATURE_ZONE,
     SUBENTRY_TYPE_ZONE,
 )
 
@@ -30,6 +31,7 @@ SubentryTypeToEntityType: dict[str, str] = {
     SUBENTRY_TYPE_SWITCHABLE_OUTPUT: "switch",
     SUBENTRY_TYPE_ZONE: "zones",
     SUBENTRY_TYPE_OUTPUT: "outputs",
+    SUBENTRY_TYPE_TEMPERATURE_ZONE: "temperature",
 }
 
 

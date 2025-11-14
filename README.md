@@ -8,13 +8,14 @@ This is an enhanced version of the Satel Integra integration, based on the offic
 
 ## Current Status
 
-**v0.4.0 - Area Assignment Feature!** - Now supports automatic area assignment for devices.
+**v0.5.0 - Temperature Monitoring!** - Now supports reading temperature from temperature-enabled zones.
 
 - Based on official HA core satel_integra component
-- Uses latest `satel_integra` library from GitHub (unreleased, post-0.3.7)
+- Uses enhanced `satel_integra_enh` library with extended protocol support
 - Updated to new library API with improved lifecycle management
 - **✅ Encryption support via integration_key parameter**
 - **✅ Automatic area assignment for zones and outputs**
+- **✅ Temperature monitoring for temperature-capable zones**
 - Includes config flow for UI-based setup
 - Supports YAML configuration for easy bulk setup
 - Supports partitions, zones, outputs, and switchable outputs
@@ -23,6 +24,7 @@ This is an enhanced version of the Satel Integra integration, based on the offic
 
 - **Encrypted Communication**: Supports integration key for secure communication with your alarm panel
 - **Automatic Area Assignment**: Assign devices to Home Assistant areas directly from configuration
+- **Temperature Monitoring**: Read temperature from zones with temperature sensors
 - **YAML Configuration**: Configure all zones, partitions, and outputs via YAML for easy bulk setup
 - **Alarm Control Panel**: Arm/disarm partitions with different modes (Away, Home)
 - **Binary Sensors**: Monitor zone states (doors, windows, motion detectors, etc.)
@@ -32,7 +34,6 @@ This is an enhanced version of the Satel Integra integration, based on the offic
 
 ## Planned Features
 
-- [ ] Temperature monitoring
 - [ ] System diagnostics/trouble sensors
 - [ ] Zone bypass functionality
 - [ ] Zone tamper detection
@@ -82,12 +83,13 @@ satel_integra:
       name: "Inside"
       arm_home_mode: 1
 
-  # Configure zones with optional area assignment
+  # Configure zones with optional area assignment and temperature monitoring
   zones:
     1: { name: "Front Door", type: door, area: "entry" }
     2: { name: "Kitchen Motion", type: motion, area: "kitchen" }
     3: { name: "Living Room Window", type: window, area: "living_room" }
     4: { name: "Basement Smoke Detector", type: smoke, area: "basement" }
+    5: { name: "Outdoor Temperature", type: motion, area: "garden", temperature: true }
     # ... add all your zones
 
   # Configure outputs (read-only monitoring)
@@ -113,6 +115,23 @@ satel_integra:
 - `smoke` - Smoke detectors
 - `tamper` - Tamper sensors
 - `panic` - Panic buttons
+
+**Temperature Monitoring:**
+Add `temperature: true` to any zone configuration to enable temperature monitoring. This creates an additional temperature sensor entity for zones that support temperature readings:
+- Temperature is reported in Celsius
+- Sensor polls every 60 seconds
+- Temperature range: -55°C to +125°C (0.5°C increments)
+- Non-temperature zones will show as unavailable
+
+Example:
+```yaml
+zones:
+  10: { name: "Basement", type: motion, area: "basement", temperature: true }
+```
+
+This creates two entities:
+- `binary_sensor.basement` - Motion sensor
+- `sensor.basement_temperature` - Temperature reading
 
 After adding the configuration, restart Home Assistant to load the changes.
 
