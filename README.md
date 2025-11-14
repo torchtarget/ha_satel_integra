@@ -73,7 +73,7 @@ The integration key (also called "integration password") is configured on your S
 1. Enter installer mode on your alarm panel
 2. Navigate to the ETHM-1 Plus module settings
 3. Look for "Integration" or "INTEGRATION" settings
-4. The integration key is a hexadecimal string (e.g., `0123456789ABCDEF0123456789ABCDEF`)
+4. The integration key is a string/password (e.g., `svamneUw6XCg` or similar)
 
 **Note**: If your panel requires encryption and you don't provide the integration key, the connection will fail with "No response received from panel" errors.
 
