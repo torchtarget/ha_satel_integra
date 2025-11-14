@@ -189,6 +189,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: SatelConfigEntry) -> boo
     # Get integration_key from options (optional)
     integration_key = entry.options.get(CONF_INTEGRATION_KEY)
 
+    _LOGGER.debug(
+        "Setting up Satel controller: host=%s, port=%s, zones=%s, outputs=%s, partitions=%s, has_integration_key=%s",
+        host,
+        port,
+        zones,
+        monitored_outputs,
+        partitions,
+        bool(integration_key),
+    )
+
     controller = AsyncSatel(
         host,
         port,
