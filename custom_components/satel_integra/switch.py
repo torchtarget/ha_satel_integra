@@ -76,6 +76,9 @@ class SatelIntegraSwitch(SatelIntegraEntity, SwitchEntity):
 
     async def async_added_to_hass(self) -> None:
         """Register callbacks."""
+        # Call parent to handle area assignment
+        await super().async_added_to_hass()
+
         self._attr_is_on = self._device_number in self._satel.violated_outputs
 
         self.async_on_remove(

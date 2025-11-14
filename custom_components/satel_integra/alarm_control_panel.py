@@ -103,6 +103,9 @@ class SatelIntegraAlarmPanel(SatelIntegraEntity, AlarmControlPanelEntity):
 
     async def async_added_to_hass(self) -> None:
         """Update alarm status and register callbacks for future updates."""
+        # Call parent to handle area assignment
+        await super().async_added_to_hass()
+
         self._attr_alarm_state = self._read_alarm_state()
 
         self.async_on_remove(
