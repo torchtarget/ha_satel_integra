@@ -116,18 +116,10 @@ class SatelIntegraBinarySensor(SatelIntegraEntity, BinarySensorEntity):
         self._react_to_signal = react_to_signal
         self._temperature: float | None = None
 
-        # Enable polling for zones that might have temperature sensors
-        # Only zones (not outputs) with device classes known to support temperature
-        # Common temperature-capable devices: smoke detectors, heat detectors, multi-sensors
-        self._attr_should_poll = (
-            react_to_signal == SIGNAL_ZONES_UPDATED
-            and device_class in {
-                BinarySensorDeviceClass.SMOKE,
-                BinarySensorDeviceClass.HEAT,
-                BinarySensorDeviceClass.SAFETY,
-                BinarySensorDeviceClass.GAS,
-            }
-        )
+        # Enable polling for all zones (not outputs) to discover temperature capability
+        # Auto-disable handles zones without temperature after first poll attempt
+        # This allows temperature discovery on any zone type (smoke, heat, motion, etc.)
+        self._attr_should_poll = react_to_signal == SIGNAL_ZONES_UPDATED
 
         # Set scan interval for temperature polling (5 minutes)
         if self._attr_should_poll:
