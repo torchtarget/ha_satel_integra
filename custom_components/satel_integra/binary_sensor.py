@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import random
 from datetime import timedelta
 
 from satel_integra_enh import AsyncSatel
@@ -116,10 +117,13 @@ class SatelIntegraBinarySensor(SatelIntegraEntity, BinarySensorEntity):
         self._react_to_signal = react_to_signal
         self._temperature: float | None = None
 
-        # Enable polling for all zones (not outputs) to discover temperature capability
+        # Enable polling only for motion sensors (IR sensors often have temperature capability)
+        # Only zones (not outputs) with motion device class are polled
         # Auto-disable handles zones without temperature after first poll attempt
-        # This allows temperature discovery on any zone type (smoke, heat, motion, etc.)
-        self._attr_should_poll = react_to_signal == SIGNAL_ZONES_UPDATED
+        self._attr_should_poll = (
+            react_to_signal == SIGNAL_ZONES_UPDATED
+            and device_class == BinarySensorDeviceClass.MOTION
+        )
 
         # Set scan interval for temperature polling (5 minutes)
         if self._attr_should_poll:
@@ -158,13 +162,27 @@ class SatelIntegraBinarySensor(SatelIntegraEntity, BinarySensorEntity):
         return None
 
     async def async_update(self) -> None:
-        """Poll temperature for smoke detector zones.
+        """Poll temperature for motion sensor zones.
 
-        Only called if should_poll is True (smoke detector zones only).
+        Only called if should_poll is True (motion sensor zones only).
         Polling interval is controlled by TEMPERATURE_SCAN_INTERVAL.
+
+        Random delay prevents all zones from requesting temperature simultaneously,
+        which would overwhelm the alarm panel connection.
         """
         if not self._attr_should_poll:
             return
+
+        # Add random delay (0-10 seconds) to stagger temperature requests
+        # This prevents overwhelming the connection when multiple zones poll at the same time
+        delay = random.uniform(0, 10)
+        _LOGGER.debug(
+            "Zone %s ('%s') waiting %.1fs before temperature poll",
+            self._device_number,
+            self.name,
+            delay,
+        )
+        await asyncio.sleep(delay)
 
         try:
             # Request temperature from the zone
