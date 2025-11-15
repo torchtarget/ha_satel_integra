@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import asyncio
+import logging
+from datetime import timedelta
+
 from satel_integra_enh import AsyncSatel
 
 from homeassistant.components.binary_sensor import (
@@ -24,6 +28,12 @@ from .const import (
     SatelConfigEntry,
 )
 from .entity import SatelIntegraEntity
+
+_LOGGER = logging.getLogger(__name__)
+
+# Temperature polling interval - 5 minutes to avoid overwhelming the connection
+# Temperature doesn't change rapidly in smoke detectors, so slow polling is acceptable
+TEMPERATURE_SCAN_INTERVAL = timedelta(minutes=5)
 
 
 async def async_setup_entry(
@@ -104,6 +114,18 @@ class SatelIntegraBinarySensor(SatelIntegraEntity, BinarySensorEntity):
 
         self._attr_device_class = device_class
         self._react_to_signal = react_to_signal
+        self._temperature: float | None = None
+
+        # Enable polling for zones that might have temperature (smoke detectors)
+        # Only zones (not outputs) with smoke device class are polled
+        self._attr_should_poll = (
+            react_to_signal == SIGNAL_ZONES_UPDATED
+            and device_class == BinarySensorDeviceClass.SMOKE
+        )
+
+        # Set scan interval for temperature polling (5 minutes)
+        if self._attr_should_poll:
+            self._scan_interval = TEMPERATURE_SCAN_INTERVAL
 
     async def async_added_to_hass(self) -> None:
         """Register callbacks."""
@@ -129,3 +151,59 @@ class SatelIntegraBinarySensor(SatelIntegraEntity, BinarySensorEntity):
             if new_state != self._attr_is_on:
                 self._attr_is_on = new_state
                 self.async_write_ha_state()
+
+    @property
+    def extra_state_attributes(self) -> dict[str, float] | None:
+        """Return temperature as an extra attribute if available."""
+        if self._temperature is not None:
+            return {"temperature": self._temperature}
+        return None
+
+    async def async_update(self) -> None:
+        """Poll temperature for smoke detector zones.
+
+        Only called if should_poll is True (smoke detector zones only).
+        Polling interval is controlled by TEMPERATURE_SCAN_INTERVAL.
+        """
+        if not self._attr_should_poll:
+            return
+
+        try:
+            # Request temperature from the zone
+            # Protocol allows up to 5 seconds for response
+            temperature = await self._satel.get_zone_temperature(self._device_number)
+
+            if temperature is not None:
+                _LOGGER.debug(
+                    "Zone %s ('%s') temperature: %.1f°C",
+                    self._device_number,
+                    self.name,
+                    temperature,
+                )
+                self._temperature = temperature
+            else:
+                # Zone doesn't support temperature or returned undetermined
+                # Disable polling for this zone to avoid future unnecessary requests
+                if self._temperature is None:
+                    _LOGGER.info(
+                        "Zone %s ('%s') does not support temperature - disabling temperature polling",
+                        self._device_number,
+                        self.name,
+                    )
+                    self._attr_should_poll = False
+
+        except asyncio.TimeoutError:
+            _LOGGER.debug(
+                "Timeout reading temperature for zone %s - zone may not support temperature",
+                self._device_number,
+            )
+            # Disable polling if we never got a temperature reading
+            if self._temperature is None:
+                self._attr_should_poll = False
+
+        except Exception as ex:
+            _LOGGER.warning(
+                "Error reading temperature for zone %s: %s",
+                self._device_number,
+                ex,
+            )
