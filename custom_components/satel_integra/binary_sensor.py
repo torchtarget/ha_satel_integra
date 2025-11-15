@@ -71,6 +71,13 @@ async def _temperature_polling_task(
                 if not entity._temperature_enabled:
                     continue
 
+                # Check if connection is healthy before requesting
+                if not entity._satel.connected:
+                    _LOGGER.warning(
+                        "Connection lost during temperature polling - stopping cycle"
+                    )
+                    break
+
                 try:
                     _LOGGER.debug(
                         "Requesting temperature for zone %s ('%s')",
@@ -98,14 +105,19 @@ async def _temperature_polling_task(
                             entity.name,
                         )
                         entity._temperature_enabled = False
+                        # Give connection extra time to recover after no-response
+                        await asyncio.sleep(5)
 
                 except asyncio.TimeoutError:
-                    _LOGGER.debug(
+                    _LOGGER.warning(
                         "Timeout reading temperature for zone %s - may not support temperature",
                         entity._device_number,
                     )
                     # Disable polling for this zone
                     entity._temperature_enabled = False
+                    # Give connection extra time to recover after timeout
+                    _LOGGER.debug("Pausing 30 seconds after timeout to allow connection recovery")
+                    await asyncio.sleep(30)
 
                 except Exception as ex:
                     _LOGGER.warning(
@@ -113,6 +125,8 @@ async def _temperature_polling_task(
                         entity._device_number,
                         ex,
                     )
+                    # Give connection time to recover after error
+                    await asyncio.sleep(30)
 
                 # Wait before next request to avoid overwhelming connection
                 await asyncio.sleep(TEMPERATURE_REQUEST_DELAY)
