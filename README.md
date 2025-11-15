@@ -8,7 +8,7 @@ This is an enhanced version of the Satel Integra integration, based on the offic
 
 ## Current Status
 
-**v0.9.1 - Robust Temperature Monitoring** - Added automatic connection recovery if temperature polling causes communication issues.
+**v0.9.2 - Aggressive Connection Recovery** - Triggers full integration reload to restore connection after temperature failures.
 
 - Based on official HA core satel_integra component
 - Uses enhanced `satel_integra_enh` library with extended protocol support
@@ -143,10 +143,11 @@ Both entities appear under the same device in Home Assistant and can be used in 
 If you accidentally enable temperature on a zone without a sensor:
 - The integration automatically detects the issue (timeout or no response)
 - Disables temperature polling for that specific zone
-- Verifies connection health and waits for automatic recovery (60 seconds)
-- If auto-recovery fails, manually reconnects to restore all functionality
-- Continues polling other zones without interruption
-- All other integration features (motion sensors, alarm panel) remain operational
+- Verifies connection health and waits for automatic recovery (30 seconds)
+- If auto-recovery fails, triggers a full integration reload
+- Integration reload creates a fresh connection and restarts all features
+- Temperature polling resumes with only the working zones
+- Guarantees restoration of all functionality (motion sensors, alarm panel, etc.)
 
 After adding the configuration, restart Home Assistant to load the changes.
 

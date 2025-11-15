@@ -38,13 +38,20 @@ TEMPERATURE_REQUEST_DELAY = 10
 CONNECTION_RECOVERY_TIMEOUT = 120
 
 
-async def _verify_and_recover_connection(satel: AsyncSatel, zone_number: int) -> bool:
-    """Verify connection health and wait for recovery if needed.
+async def _verify_and_recover_connection(
+    hass: HomeAssistant,
+    config_entry,
+    satel: AsyncSatel,
+    zone_number: int
+) -> bool:
+    """Verify connection health and trigger recovery if needed.
 
     Returns True if connection is healthy or successfully recovered, False otherwise.
 
-    Note: The library has auto-reconnection via keep_alive task, so we first
-    wait for automatic recovery before attempting manual reconnection.
+    Recovery strategy:
+    1. Check if connection is healthy - return True if OK
+    2. Wait 30s for auto-recovery from keep_alive task
+    3. If still down, trigger config entry reload (creates fresh connection)
     """
     # First check if connection appears healthy
     if satel.connected:
@@ -56,16 +63,16 @@ async def _verify_and_recover_connection(satel: AsyncSatel, zone_number: int) ->
         zone_number
     )
 
-    # Connection is down - first wait for auto-recovery from keep_alive task
+    # Connection is down - wait for auto-recovery from keep_alive task
     recovery_start = asyncio.get_event_loop().time()
-    auto_recovery_timeout = 60  # Wait 60 seconds for auto-recovery
+    auto_recovery_timeout = 30  # Wait 30 seconds for auto-recovery
 
     while not satel.connected:
         elapsed = asyncio.get_event_loop().time() - recovery_start
 
         if elapsed > auto_recovery_timeout:
             _LOGGER.warning(
-                "Auto-recovery timeout after %d seconds - attempting manual reconnection",
+                "Auto-recovery timeout after %d seconds - will trigger config entry reload",
                 auto_recovery_timeout
             )
             break
@@ -79,39 +86,37 @@ async def _verify_and_recover_connection(satel: AsyncSatel, zone_number: int) ->
         await asyncio.sleep(5)  # Stabilize
         return True
 
-    # Auto-recovery failed - attempt manual reconnection
-    _LOGGER.info("Attempting manual reconnection...")
+    # Auto-recovery failed - trigger config entry reload to create fresh connection
+    _LOGGER.warning(
+        "Auto-recovery failed - triggering config entry reload to restore connection"
+    )
+
     try:
-        await satel.close()
-        await asyncio.sleep(2)
-        await satel.start(enable_monitoring=True)
+        # Schedule a reload of the config entry which will:
+        # 1. Properly shut down all platforms
+        # 2. Close the connection cleanly
+        # 3. Create a fresh AsyncSatel instance
+        # 4. Restart all platforms
+        hass.config_entries.async_schedule_reload(config_entry.entry_id)
 
-        # Wait for manual reconnection with remaining timeout
-        remaining_timeout = CONNECTION_RECOVERY_TIMEOUT - auto_recovery_timeout
-        recovery_start = asyncio.get_event_loop().time()
+        _LOGGER.info(
+            "✅ Config entry reload scheduled - integration will restart shortly"
+        )
 
-        while not satel.connected:
-            if (asyncio.get_event_loop().time() - recovery_start) > remaining_timeout:
-                _LOGGER.error(
-                    "Manual reconnection timeout after %d seconds - giving up",
-                    remaining_timeout
-                )
-                return False
+        # Give the reload a moment to start
+        await asyncio.sleep(5)
 
-            _LOGGER.debug("Waiting for manual reconnection...")
-            await asyncio.sleep(5)
-
-        _LOGGER.info("✅ Connection manually recovered after zone %s error", zone_number)
-        await asyncio.sleep(5)  # Stabilize
-        return True
+        # Return False to stop temperature polling - the reload will restart everything
+        return False
 
     except Exception as ex:
-        _LOGGER.error("Failed to recover connection: %s", ex)
+        _LOGGER.error("Failed to trigger config entry reload: %s", ex)
         return False
 
 
 async def _temperature_polling_task(
     hass: HomeAssistant,
+    config_entry,
     temperature_sensors: list[SatelIntegraTemperatureSensor],
 ) -> None:
     """Background task to sequentially poll temperature from configured zones.
@@ -148,10 +153,10 @@ async def _temperature_polling_task(
                         "Connection lost during temperature polling - attempting recovery"
                     )
                     # Attempt to recover connection
-                    if await _verify_and_recover_connection(sensor._satel, sensor._zone_number):
+                    if await _verify_and_recover_connection(hass, config_entry, sensor._satel, sensor._zone_number):
                         _LOGGER.info("Connection recovered - continuing temperature polling")
                     else:
-                        _LOGGER.error("Failed to recover connection - stopping temperature polling cycle")
+                        _LOGGER.info("Config entry reload triggered - temperature polling will restart after reload")
                         break
 
                 try:
@@ -194,11 +199,11 @@ async def _temperature_polling_task(
 
                     # Verify connection health and attempt recovery if needed
                     _LOGGER.info("Verifying connection health after timeout...")
-                    if await _verify_and_recover_connection(sensor._satel, sensor._zone_number):
+                    if await _verify_and_recover_connection(hass, config_entry, sensor._satel, sensor._zone_number):
                         _LOGGER.info("Connection verified/recovered - continuing with next zone")
                     else:
-                        _LOGGER.error(
-                            "Failed to recover connection after zone %s timeout - stopping temperature polling cycle",
+                        _LOGGER.info(
+                            "Config entry reload triggered after zone %s timeout - temperature polling will restart after reload",
                             sensor._zone_number
                         )
                         break
@@ -212,11 +217,11 @@ async def _temperature_polling_task(
 
                     # Verify connection health and attempt recovery if needed
                     _LOGGER.info("Verifying connection health after error...")
-                    if await _verify_and_recover_connection(sensor._satel, sensor._zone_number):
+                    if await _verify_and_recover_connection(hass, config_entry, sensor._satel, sensor._zone_number):
                         _LOGGER.info("Connection verified/recovered - continuing with next zone")
                     else:
-                        _LOGGER.error(
-                            "Failed to recover connection after zone %s error - stopping temperature polling cycle",
+                        _LOGGER.info(
+                            "Config entry reload triggered after zone %s error - temperature polling will restart after reload",
                             sensor._zone_number
                         )
                         break
@@ -278,7 +283,7 @@ async def async_setup_entry(
             "Starting background temperature polling for %d temperature sensors",
             len(temperature_sensors)
         )
-        asyncio.create_task(_temperature_polling_task(hass, temperature_sensors))
+        asyncio.create_task(_temperature_polling_task(hass, config_entry, temperature_sensors))
 
 
 class SatelIntegraTemperatureSensor(SatelIntegraEntity, SensorEntity):
