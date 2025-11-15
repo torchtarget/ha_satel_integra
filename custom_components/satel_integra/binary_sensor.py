@@ -167,20 +167,22 @@ class SatelIntegraBinarySensor(SatelIntegraEntity, BinarySensorEntity):
         Only called if should_poll is True (motion sensor zones only).
         Polling interval is controlled by TEMPERATURE_SCAN_INTERVAL.
 
-        Random delay prevents all zones from requesting temperature simultaneously,
-        which would overwhelm the alarm panel connection.
+        Random delay spreads requests across the full 5-minute polling interval
+        to prevent overwhelming the alarm panel connection.
         """
         if not self._attr_should_poll:
             return
 
-        # Add random delay (0-10 seconds) to stagger temperature requests
-        # This prevents overwhelming the connection when multiple zones poll at the same time
-        delay = random.uniform(0, 10)
+        # Add random delay (0-240 seconds, 80% of 5-minute interval)
+        # This spreads temperature requests across the entire polling cycle
+        # instead of all hitting within the first few seconds
+        delay = random.uniform(0, 240)
         _LOGGER.debug(
-            "Zone %s ('%s') waiting %.1fs before temperature poll",
+            "Zone %s ('%s') waiting %.1fs (%.1f min) before temperature poll",
             self._device_number,
             self.name,
             delay,
+            delay / 60,
         )
         await asyncio.sleep(delay)
 
